@@ -1,0 +1,21 @@
+cargo_network_ai/
+│
+├── data/
+│   ├── raw/                   # Place your original CSVs here
+│   └── processed/             # Where the script will save cleaned data
+│
+├── models/                    # Where .pkl and .pt models will be saved
+│
+├── src/                       # Source code modules
+│   ├── __init__.py
+│   ├── preprocessing.py       # Path reconstruction & initial cleaning
+│   ├── graph_builder.py       # build_pyg_graph function
+│   ├── gnn_model.py           # GraphSAGE class & training loop
+│   ├── clustering.py          # K-Means, Anomaly Detection, & Visuals
+│   ├── prediction.py          # DelayPredictor class
+│   ├── optimization.py        # RouteOptimizer class
+│   └── analytics.py           # CostBenefitAnalyzer & PrescriptiveAnalyzer classes
+│
+├── main.py                    # The Master Orchestrator script
+├── requirements.txt           # Library dependencies
+└── README.md

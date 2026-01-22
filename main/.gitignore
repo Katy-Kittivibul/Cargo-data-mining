@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+
+# Data and Results (Optional: keep if user wants to push results, but usually ignore large data)
+# Ignoring raw data to avoid large file issues
+data/c2k_data_comma.csv
+data/cleaned_data.csv
+*.npy
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

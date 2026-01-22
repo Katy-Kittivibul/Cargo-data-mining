@@ -1,0 +1,40 @@
+# --- Core Data Science & Mathematics ---
+pandas
+numpy
+scikit-learn
+statsmodels
+
+# --- Deep Learning & Graph Neural Networks (PyTorch) ---
+# Note: For production, pin specific versions compatible with your CUDA version
+torch
+torchvision
+torchaudio
+torch-geometric
+
+# --- Graph Theory, Databases & Mining ---
+networkx
+gspan-mining
+neo4j
+py2neo
+
+# --- Time-Series Forecasting & Anomaly Detection ---
+darts
+prophet
+statsforecast
+pyod
+
+# --- Machine Learning & Explainability ---
+xgboost
+lightgbm
+shap
+mlflow
+
+# --- Visualization & Reporting ---
+matplotlib
+seaborn
+plotly
+ydata-profiling
+
+# --- Geospatial & Utilities ---
+folium
+geopy

@@ -1,0 +1,4 @@
+Column,Skewness,Interpretation
+Planned_Mins,7.053990913686482,Highly Positive Skew
+Effective_Mins,53.5228376211989,Highly Positive Skew
+Delay_Mins,67.4764053152865,Highly Positive Skew

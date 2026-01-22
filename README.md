@@ -3,10 +3,8 @@
 ## Overview
 This project represents a comprehensive refactoring of the legacy `Cargo_data_mining` codebase into a modular, production-ready Python pipeline. The system performs end-to-end analysis of logistics networks, including data cleaning, graph-based modelling, delay prediction, and route optimisation.
 
-The primary objective was to transition from a monolithic Jupyter Notebook to a structured software architecture that is scalable, maintainable, and tailored for VS Code execution.
-
 ## Project Structure
-The solution is organised within the `main` directory:
+All scripts are organised within the `main` directory:
 
 - **`main.py`**: The central entry point that orchestrates the entire pipeline.
 - **`src/`**: Contains the core logic modules:
@@ -40,7 +38,7 @@ Pattern mining revealed that delays are not randomly distributed but often stem 
 ## How to Run
 1. **Install Dependencies**:
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirement.txt
    ```
 2. **Execute the Pipeline**:
    ```bash
@@ -51,3 +49,4 @@ Pattern mining revealed that delays are not randomly distributed but often stem 
 
 ## Conclusion
 This refactored solution provides a solid foundation for future predictive logistics. By leveraging GNNs and modular software design, the system is now poised for integration into a real-time monitoring environment.
+

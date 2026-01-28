@@ -1,0 +1,263 @@
+🚀 STARTING CARGO ANALYSIS PIPELINE
+Step 1.1: Running EDA...
+Step 1: Preprocessing...
+🚀 Starting Logistics Analysis Pipeline...
+✅ Converted 'IN_1_Dep_Seg2_Planned_Mins' to Numeric.
+✅ Converted 'IN_1_Dep_Seg2_Effective_Mins' to Numeric.
+✅ Converted 'IN_1_Arr_Seg2_Planned_Mins' to Numeric.
+✅ Converted 'IN_1_Arr_Seg2_Effective_Mins' to Numeric.
+✅ Converted 'IN_1_Dep_Seg3_Planned_Mins' to Numeric.
+✅ Converted 'IN_1_Dep_Seg3_Effective_Mins' to Numeric.
+✅ Converted 'IN_1_Arr_Seg3_Planned_Mins' to Numeric.
+✅ Converted 'IN_1_Arr_Seg3_Effective_Mins' to Numeric.
+✅ Converted 'IN_2_CheckIn_Planned_Mins' to Numeric.
+✅ Converted 'IN_2_CheckIn_Effective_Mins' to Numeric.
+✅ Converted 'IN_2_Dep_Seg1_Planned_Mins' to Numeric.
+✅ Converted 'IN_2_Dep_Seg1_Effective_Mins' to Numeric.
+✅ Converted 'IN_2_Arr_Seg1_Planned_Mins' to Numeric.
+✅ Converted 'IN_2_Arr_Seg1_Effective_Mins' to Numeric.
+✅ Converted 'IN_2_Dep_Seg2_Planned_Mins' to Numeric.
+✅ Converted 'IN_2_Dep_Seg2_Effective_Mins' to Numeric.
+✅ Converted 'IN_2_Arr_Seg2_Planned_Mins' to Numeric.
+✅ Converted 'IN_2_Arr_Seg2_Effective_Mins' to Numeric.
+✅ Converted 'IN_2_Dep_Seg3_Planned_Mins' to Numeric.
+✅ Converted 'IN_2_Dep_Seg3_Effective_Mins' to Numeric.
+✅ Converted 'IN_2_Arr_Seg3_Planned_Mins' to Numeric.
+✅ Converted 'IN_2_Arr_Seg3_Effective_Mins' to Numeric.
+✅ Converted 'IN_2_Delivery_Planned_Mins' to Numeric.
+✅ Converted 'IN_2_Delivery_Effective_Mins' to Numeric.
+✅ Converted 'IN_2_Hops' to Numeric.
+✅ Converted 'IN_3_CheckIn_Planned_Mins' to Numeric.
+✅ Converted 'IN_3_CheckIn_Effective_Mins' to Numeric.
+✅ Converted 'IN_3_Dep_Seg1_Planned_Mins' to Numeric.
+✅ Converted 'IN_3_Dep_Seg1_Effective_Mins' to Numeric.
+✅ Converted 'IN_3_Arr_Seg1_Planned_Mins' to Numeric.
+✅ Converted 'IN_3_Arr_Seg1_Effective_Mins' to Numeric.
+✅ Converted 'IN_3_Dep_Seg2_Planned_Mins' to Numeric.
+✅ Converted 'IN_3_Dep_Seg2_Effective_Mins' to Numeric.
+✅ Converted 'IN_3_Arr_Seg2_Planned_Mins' to Numeric.
+✅ Converted 'IN_3_Arr_Seg2_Effective_Mins' to Numeric.
+✅ Converted 'IN_3_Dep_Seg3_Planned_Mins' to Numeric.
+✅ Converted 'IN_3_Dep_Seg3_Effective_Mins' to Numeric.
+✅ Converted 'IN_3_Arr_Seg3_Planned_Mins' to Numeric.
+✅ Converted 'IN_3_Arr_Seg3_Effective_Mins' to Numeric.
+✅ Converted 'IN_3_Delivery_Planned_Mins' to Numeric.
+✅ Converted 'IN_3_Delivery_Effective_Mins' to Numeric.
+✅ Converted 'IN_3_Hops' to Numeric.
+✅ Converted 'OUT_Dep_Seg2_Planned_Mins' to Numeric.
+✅ Converted 'OUT_Dep_Seg2_Effective_Mins' to Numeric.
+✅ Converted 'OUT_Arr_Seg2_Planned_Mins' to Numeric.
+✅ Converted 'OUT_Arr_Seg2_Effective_Mins' to Numeric.
+✅ Converted 'OUT_Dep_Seg3_Planned_Mins' to Numeric.
+✅ Converted 'OUT_Dep_Seg3_Effective_Mins' to Numeric.
+✅ Converted 'OUT_Arr_Seg3_Planned_Mins' to Numeric.
+✅ Converted 'OUT_Arr_Seg3_Effective_Mins' to Numeric.
+
+--- Cleaning Summary ---
+Total Columns: 97
+Numeric Columns: 97
+Categorical/ID Columns: 0
+✅ Pipeline Complete. Hub Analysis and Long Data ready.
+📁 Reports will be saved to: E:\Coding\Cargo\main\reports\eda
+
+--- Analysing Correlations ---
+✅ Correlation CSV and PNG saved.
+
+--- Checking Multicollinearity (VIF) ---
+✅ Top VIF Results (Features with VIF > 10 may be redundant):
+       feature  VIF
+  Planned_Mins  inf
+Effective_Mins  inf
+    Delay_Mins  inf
+
+--- Analysing Distribution Skewness ---
+✅ Distribution analysis and plots saved.
+Step 2: Building Graph...
+======================================================================
+BUILDING PYTORCH GEOMETRIC GRAPH
+======================================================================
+Graph Construction Complete: 427 nodes, 4163 edges.
+Step 3: Training GraphSAGE Model...
+
+======================================================================
+TRAINING GRAPHSAGE (Link Prediction Loss)
+======================================================================
+Embedding dimension: 16
+Hidden dimension: 32
+Epochs: 50
+Device: cuda
+Epoch 001 | Loss: 6.7709 | Pos: 0.3973 | Neg: 6.3736
+Epoch 020 | Loss: 1.4470 | Pos: 0.3565 | Neg: 1.0905
+Epoch 040 | Loss: 1.1766 | Pos: 0.3541 | Neg: 0.8225
+
+✅ Training complete!
+Final embeddings shape: (427, 16)
+======================================================================
+Step 4: Clustering Analysis...
+
+======================================================================
+CALCULATING OPTIMAL K (K=1 to K=8)
+======================================================================
+
+💡 Recommended K (highest silhouette): 3
+  Silhouette score: 0.755
+
+======================================================================
+PERFORMING K-MEANS CLUSTERING (K=3)
+======================================================================
+Silhouette Score: 0.755 (higher is better, range: [-1, 1])
+Davies-Bouldin Index: 0.315 (lower is better)
+
+======================================================================
+CLUSTER SUMMARY STATISTICS
+======================================================================
+ Cluster_Label  Hubs_Count  Mean_Flow  Total_Flow  Mean_Avg_Delay  Mean_Std_Delay
+           0.0         416    67.4375       28054       73.015247     2109.397478
+           1.0           1    13.0000          13    61181.000000   149157.533133
+           2.0          10  2274.1000       22741     -371.237848     1419.688139
+
+======================================================================
+CLUSTER INTERPRETATION & BUSINESS INSIGHTS
+======================================================================
+
+======================================================================
+🔹 CLUSTER 0.0 (416 hubs)
+======================================================================
+  Avg Flow: 67.44
+  Total Flow: 28054.00
+  Avg Delay: 73.02
+  Avg Std Delay: 2109.40
+  Flow % of Total: 55.19
+
+  Type: 📦 STANDARD HUB - Low volume, acceptable performance
+  Recommendation: Standard operations, routine monitoring
+
+  Top 5 Hubs:
+    Hub 609.0: 863 flows, -839.7 min delay
+    Hub 281.0: 833 flows, -780.1 min delay
+    Hub 597.0: 770 flows, 275.5 min delay
+    Hub 413.0: 585 flows, -934.8 min delay
+    Hub 431.0: 579 flows, 237.5 min delay
+
+======================================================================
+🔹 CLUSTER 1.0 (1 hubs)
+======================================================================
+  Avg Flow: 13.00
+  Total Flow: 13.00
+  Avg Delay: 61181.00
+  Avg Std Delay: 149157.53
+  Flow % of Total: 0.03
+
+  Type: ⚡ INEFFICIENT SMALL HUB - Low volume but problematic
+  Recommendation: Investigate operational issues or consider consolidation
+
+  Top 5 Hubs:
+    Hub 620.0: 13 flows, 61181.0 min delay
+
+======================================================================
+🔹 CLUSTER 2.0 (10 hubs)
+======================================================================
+  Avg Flow: 2274.10
+  Total Flow: 22741.00
+  Avg Delay: -371.24
+  Avg Std Delay: 1419.69
+  Flow % of Total: 44.74
+
+  Type: ✅ EFFICIENT MAJOR HUB - High volume, well-performing
+  Recommendation: Monitor closely and replicate best practices
+
+  Top 5 Hubs:
+    Hub 700.0: 4093 flows, -1011.0 min delay
+    Hub 128.0: 2850 flows, -617.0 min delay
+    Hub 815.0: 2809 flows, -529.4 min delay
+    Hub 349.0: 2556 flows, 252.6 min delay
+    Hub 128: 2161 flows, 9.9 min delay
+
+======================================================================
+🔹 CLUSTER nan (0 hubs)
+======================================================================
+  Avg Flow: nan
+  Total Flow: 0.00
+  Avg Delay: nan
+  Avg Std Delay: nan
+  Flow % of Total: 0.00
+
+  Type: 📦 STANDARD HUB - Low volume, acceptable performance
+  Recommendation: Standard operations, routine monitoring
+
+  Top 5 Hubs:
+
+======================================================================
+
+======================================================================
+ANALISING CLUSTER BOUNDARIES
+======================================================================
+Found 0 hubs on cluster boundaries (ambiguous classification).
+
+======================================================================
+EMBEDDING DIMENSION IMPORTANCE
+======================================================================
+Top 5 Dimensions by Variance (Information Content):
+ Dimension  Variance
+         9  0.098511
+         1  0.095157
+        13  0.093617
+         8  0.076674
+         5  0.068920
+Step 5: Training Delay Predictor...
+
+======================================================================
+FEATURE ENGINEERING FOR DELAY PREDICTION
+======================================================================
+✅ Features engineered: 29,710 samples.
+
+======================================================================
+TRAINING DELAY PREDICTION MODEL
+======================================================================
+Fitting gradient_boosting...
+📊 Results -> MAE: 192.38 min | R²: 0.513
+✅ Model saved to E:\Coding\Cargo\main\results\delay_predictor.pkl
+✅ Feature importance plot saved to E:\Coding\Cargo\main\results\feature_importance.html
+
+======================================================================
+DELAY PATTERN MINING (Threshold: >30 min)
+======================================================================
+⚠️ Top Frequent Delay Sequences:
+Hub_ID
+815.0           556
+700.0           499
+128.0           387
+815             303
+485.0           301
+349.0           251
+128             243
+700             188
+431.0           105
+671.0 -> 700     99
+Name: count, dtype: int64
+✅ Delay patterns saved to E:\Coding\Cargo\main\results\delay_patterns.csv
+Step 6: Network Optimization...
+
+======================================================================
+BUILDING WEIGHTED TRANSPORT NETWORK
+======================================================================
+✅ Transport Graph: 435 hubs, 4466 routes
+
+======================================================================
+IDENTIFYING CRITICAL NETWORK BOTTLENECKS
+======================================================================
+✅ Network graph saved to E:\Coding\Cargo\main\results\network_graph.html
+
+Top Network Bottlenecks:
+  Hub_ID  Centrality_Score  Flow_Volume  Avg_Hub_Delay
+0  128.0          0.170482         2850    -616.995789
+1  700.0          0.127572         4093   -1011.039335
+2  815.0          0.124046         2809    -529.351727
+3  349.0          0.105527         2556     252.552426
+4    128          0.096979         2161       9.853771
+Step 7: Cost-Benefit Analysis...
+Total Network Delay Cost: £16,348,950.00
+Step 8: Exporting Results...
+✅ Results exported to E:\Coding\Cargo\main\results
+
+✅ PIPELINE FINISHED SUCCESSFULLY

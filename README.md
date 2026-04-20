@@ -1,10 +1,19 @@
 # Cargo Network Analysis Project
 
 ## Overview
-This project represents a comprehensive refactoring of the legacy `Cargo_data_mining` codebase into a modular, production-ready Python pipeline. The system performs end-to-end analysis of logistics networks, including data cleaning, graph-based modelling, delay prediction, and route optimisation.
+This project represents a comprehensive refactoring of the legacy `Cargo_data_mining` codebase into a modular, production-ready Python pipeline. The system performs end-to-end analysis of logistics networks, including data cleaning, graph-based modelling, delay prediction, and route optimisation. 
+
+*Note: This system focuses on Graph Neural Networks (GNN) and classical Machine Learning for network reasoning.*
+
+## Dataset
+This project uses the **Cargo 2000 Case Study Dataset**.
+
+**Download the dataset here:** [Kaggle - Cargo 2000 Dataset](https://www.kaggle.com/datasets/crawford/cargo-2000-dataset)
+
+Please place the `c2k_data_comma.csv` file in the `main/data/` directory before running the pipeline.
 
 ## Project Structure
-All scripts are organised within the `main` directory:
+All scripts and local directories are organised within the `main` directory:
 
 - **`main.py`**: The central entry point that orchestrates the entire pipeline.
 - **`src/`**: Contains the core logic modules:
@@ -16,37 +25,27 @@ All scripts are organised within the `main` directory:
     - `optimization.py`: Identifies optimal routes and critical network bottlenecks using NetworkX.
     - `analytics.py`: Delivers cost-benefit analysis and interactive visualisations.
     - `eda_analysis.py`: Provides statistical insights (distribution skewness, multicollinearity checks).
+- **`data/`**: Storage for raw and cleaned datasets (ignored by git).
+- **`results/`**: Output directory for interactive HTML reports, models, and exported data (ignored by git).
 
-## What We Learned & Found
-Through the application of this advanced analytics pipeline, we have uncovered several key insights regarding the logistics network:
-
-### 1. Network Bottlenecks
-Our topology analysis identified specific hubs that serve as critical bridges in the network. Notably:
-- **Hub 349** acts as a significant choke point, exhibiting a high centrality score alongside a concerning average delay of **~252 minutes**.
-- **Hubs 128, 700, and 815** are the most central nodes. While highly active, their variability significantly impacts the broader network stability.
-
-### 2. Delay Patterns
-Pattern mining revealed that delays are not randomly distributed but often stem from specific nodes and sequences:
-- **Hub 815** and **Hub 700** frequently appear in delayed journey legs.
-- The route segment **671.0 → 700** was identified as a recurrent path for shipment lateness, suggesting a structural issue on this specific link.
-
-### 3. Technical Learnings
-- **Modularisation**: Splitting the logic into distinct concerns (Preprocessing vs Modelling) drastically improved debugging and testing capabilities.
-- **Graph Neural Networks (GNN)**: Embedding the transport network allowed us to capture latent relationships between hubs that traditional statistical methods missed, enabling more robust clustering.
-- **Data Integrity**: We discovered that "effective time" metrics often precede "planned time" (resulting in negative delays), indicating potential data logging inconsistencies or conservative planning buffers.
+## Key Insights
+- **Network Bottlenecks**: Topology analysis identifies critical choke points (e.g., Hub 349) using centrality scores and historical delay metadata.
+- **Delay Patterns**: Pattern mining identifies recurrent sequences of delays on specific routes.
+- **Graph Embeddings**: Using GNNs allows the system to capture latent hub relationships, improving the reliability of logistics clustering.
 
 ## How to Run
-1. **Install Dependencies**:
+1. **Prepare Data**: Download the dataset from Kaggle and place it in `main/data/`.
+2. **Install Dependencies**:
    ```bash
-   pip install -r requirement.txt
+   cd main
+   pip install -r requirements.txt
    ```
-2. **Execute the Pipeline**:
+3. **Execute the Pipeline**:
    ```bash
    python main.py
    ```
-3. **View Results**:
-   Explore the `results/` directory for interactive dashboards (`executive_dashboard.html`) and model artifacts.
+4. **View Results**:
+   Explore the `main/results/` directory for interactive dashboards (`executive_dashboard.html`) and model artifacts.
 
-## Conclusion
-This refactored solution provides a solid foundation for future predictive logistics. By leveraging GNNs and modular software design, the system is now poised for integration into a real-time monitoring environment.
-
+## Architecture
+The system uses a modular design ensuring that each component (Preprocessing, Graph Building, Model Training, Analytics) can be tested and scaled independently.

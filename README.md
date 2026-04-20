@@ -46,6 +46,11 @@ All scripts and local directories are organised within the `main` directory:
    ```
 4. **View Results**:
    Explore the `main/results/` directory for interactive dashboards (`executive_dashboard.html`) and model artifacts.
+   **Streamlit**
+   Interactive dashboard + "What-if" ROI simulation
+   ```bash
+   streamlit run .\dashboard.py
+   ```
 
 ## Architecture
 The system uses a modular design ensuring that each component (Preprocessing, Graph Building, Model Training, Analytics) can be tested and scaled independently.

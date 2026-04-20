@@ -8,11 +8,26 @@ env/
 venv/
 .env
 
-# Data and Results (Optional: keep if user wants to push results, but usually ignore large data)
-# Ignoring raw data to avoid large file issues
-data/c2k_data_comma.csv
-data/cleaned_data.csv
+# Data
+data/
+*.csv
+*.parquet
+*.json
 *.npy
+
+# Results and Reports
+results/
+reports/
+*.pkl
+*.html
+*.png
+*.jpg
+*.jpeg
+
+# Artifacts and logs
+terminal_output.txt
+terminal_results.txt
+hub_*_investigation.csv
 
 # Editor
 .vscode/

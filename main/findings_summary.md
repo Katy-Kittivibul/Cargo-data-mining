@@ -1,95 +1,91 @@
-# Terminal Results Summary
+# Pipeline Findings Summary
 
-This document summarizes the techniques, tools, and key findings from the executed pipeline as recorded in `terminal_results.txt`.
+This document summarizes the techniques, tools, and key findings from the executed logistics analysis pipeline, along with detailed explanations of how each result is calculated.
 
 ## 1. Logistics Analysis Pipeline (EDA & Preprocessing)
 **Techniques:**
-- **Data Conversion:** Converted 97 columns to numeric types.
-- **Correlation Analysis:** Generated correlation matrices.
-- **Multicollinearity Check:** Used Variance Inflation Factor (VIF) to identify redundant features.
-- **Distribution Analysis:** Analyzed skewness of distributions.
+- Data Cleaning: Standardized timestamps and metric computations. Cleaned invalid formats and coerced items into numeric types.
+- Missing values imputed or dropped based on step requirements.
 
-**Tools:**
-- **VIF Analysis:** For multicollinearity detection.
-- **EDA & Reporting:** Automated report generation in `reports/eda`.
+**How it is calculated:**
+- **Metrics Computation:** Delay metrics are derived directly from the raw data. The core calculation is `Delay_Mins = Effective_Mins - Planned_Mins` at various stages of the shipment (Check-in, Transport Segments, Delivery). If a shipment arrives early, the `Delay_Mins` is negative.
 
 **Key Findings:**
-- **Data Integrity:** 97 numeric columns processed; no categorical/ID columns remained.
-- **Multicollinearity:** Three features (`Planned_Mins`, `Effective_Mins`, `Delay_Mins`) showed infinite VIF, indicating perfect multicollinearity and redundancy.
+- Extracted and computed duration-based metrics for statistical analysis.
+- **Top VIF Results (Features with VIF > 10 may be redundant):**
+```text
+       feature         VIF
+  Planned_Mins 1471.574222
+Effective_Mins 1315.951928
+    Delay_Mins   77.335617
+```
 
 ## 2. Graph Construction
 **Techniques:**
 - **Graph Structure:** Built a graph representation of the logistics network.
 
-**Tools:**
-- **PyTorch Geometric:** Used for building the graph data structure.
+**How it is calculated:**
+- **Nodes & Edges:** Each unique `Hub_ID` is registered as a "Node". An "Edge" (route) is created whenever a shipment moves sequentially from one Hub to another. The edge weights are based on the aggregate flow volume and the average traverse time (delay) between those two specific hubs.
 
 **Key Findings:**
-- **Graph Size:** Constructed a graph with **427 nodes** and **4,163 edges**.
+- **Graph Size:** Constructed a weighted transport graph with **238 hubs** (nodes) and **2,677 routes** (edges). Node integer fragmentation has been successfully resolved compared to earler runs.
 
-## 3. Training GraphSAGE Model
+## 3. Clustering Analysis
 **Techniques:**
-- **Graph Neural Network (GNN):** GraphSAGE architecture.
-- **Link Prediction Loss:** Optimized model to predict connections between hubs.
-- **Node Embeddings:** Generated 16-dimensional vector representations for each hub.
+- **K-Means Clustering:** Segmented hubs based on performance and structure characteristics.
 
-**Tools:**
-- **GraphSAGE:** The specific GNN architecture used.
-- **PyTorch (CUDA):** Accelerated training on GPU.
+**How it is calculated:**
+- **Embeddings & K-Means:** First, a GraphSAGE Neural Network learns vector representations (embeddings) for each hub based on its connectivity and delay KPIs. Then, the K-Means algorithm mathematically groups these hubs into clusters by minimizing the variance within each group, separating high-volume/efficient hubs from low-volume/inefficient ones. The optimal "K" is selected using the highest Silhouette Score.
 
 **Key Findings:**
-- **Model Convergence:** Loss decreased significantly from **6.77** (Epoch 1) to **1.17** (Epoch 40), indicating successful learning.
-- **Embedding Generation:** produced (427, 16) embeddings for downstream tasks.
+- **Optimal Silhouette Score:** 0.484 with K=2 clusters.
+- **Cluster 0 (Critical Bottleneck, 202 hubs):** High volume with delays. Avg flow: 233.03, Mean avg delay: -128.54.
+- **Cluster 1 (Standard Hub, 33 hubs):** Low volume, acceptable performance. Avg flow: 12.82, Mean avg delay: -453.70.
 
-## 4. Clustering Analysis
+## 4. Delay Prediction & Pattern Mining
 **Techniques:**
-- **K-Means Clustering:** Segmented hubs based on embeddings/features.
-- **Silhouette Analysis:** Determined optimal cluster count (K).
-- **Davies-Bouldin Index:** Validated cluster separation.
-
-**Tools:**
-- **K-Means:** The clustering algorithm.
-- **Silhouette Score:** Metric for cluster quality.
-
-**Key Findings:**
-- **Optimal Segments:** K=3 was identified as optimal (Silhouette Score: **0.755**).
-- **Cluster Profiles:**
-    - **Cluster 0 (Standard Hubs):** 416 hubs. Low volume (67 flows), acceptable delay (~73 min). Represents the majority of the network.
-    - **Cluster 1 (Inefficient Small Hub):** **1 hub (Hub 620.0)**. Extremely high delay (**61,181 min** avg) despite low volume. Needs immediate investigation.
-    - **Cluster 2 (Efficient Major Hubs):** 10 hubs. High volume (2,274 flows), **negative delay** (-371 min, meaning early arrivals). These are the top performers.
-
-## 5. Delay Prediction & Pattern Mining
-**Techniques:**
-- **Feature Engineering:** Prepared 29,710 samples for modeling.
-- **Gradient Boosting:** Trained a regression model to predict delays.
+- **Feature Engineering & Conformal Prediction:** Prepared datasets for modeling and wrapped predictions to give exact confidence bounds.
 - **Pattern Mining:** Identified frequent sequences of delays.
 
-**Tools:**
-- **Gradient Boosting Regressor:** The predictive model.
-- **Pattern Mining:** For sequence analysis.
+**How it is calculated:**
+- **Prediction:** A Gradient Boosting Regressor algorithm combines various engineered features (like day of week, hub volume, historical hub delay) into decision trees to predict the exact `Delay_Mins` of a future shipment. A conformal predictor step mathematically calculates 90% confidence uncertainty margins (Lower/Upper bounds) for each prediction.
+- **Pattern Mining:** The system scans historical sequences and counts how many times specific hubs consecutively appear with a delay exceeding a strict threshold (e.g., >30 minutes).
 
 **Key Findings:**
-- **Model Performance:** MAE: **192.38 min**, R²: **0.513**.
-- **Frequent Delays:** Hubs **815, 700, and 128** appear most frequently in delay patterns, likely due to their high volume.
+- **Gradient Boosting Results:** Hyperparameter tuning (GridSearchCV) found optimal parameters (`learning_rate: 0.05`, `max_depth: 5`, `min_samples_split: 5`, `n_estimators: 300`). Achieved **MAE: 163.64 min** and **R²: 0.643**.
+- **Conformal Bounds:** Confidence intervals were successfully generated on 31,761 calibrated samples.
+- **Frequent Delays:** Hubs **815 (1100 occurrences), 700 (893 occurrences), 128, 485, and 349** appear most frequently in >30 min delay sequences. Data fragmentation (e.g. 815 vs 815.0) has been fixed.
 
-## 6. Network Optimization
+## 5. Network Optimization
 **Techniques:**
-- **Weighted Transport Network:** Modeled the network with weights.
-- **Centrality Analysis:** Calculated centrality scores to identify bottlenecks.
+- **Weighted Transport Network:** Identified critical connections.
+- **Centrality Analysis:** Calculated centrality scores to identify structural bottlenecks.
 
-**Tools:**
-- **Network Graph:** Saved as interactive HTML.
+**How it is calculated:**
+- **Betweenness Centrality:** The system simulates the shortest paths for all shipments moving across the network. A hub's "Centrality Score" is the fraction of all shortest paths that pass through that specific hub. A higher score closer to 1.0 means the hub acts as a crucial bridge or bottleneck for the entire global network.
 
 **Key Findings:**
 - **Top Bottlenecks:**
-    - **Hub 128.0:** Highest centrality (0.170).
-    - **Hub 700.0:** Second highest (0.128).
-    - **Hub 815.0:** Third highest (0.124).
-    These hubs are critical to network flow but are also generally efficient (from Cluster 2).
+    - **Hub 349:** Highest centrality (0.152), 3501 flows, averaging +50 mins delay.
+    - **Hub 700:** Centrality 0.121, 5277 flows.
+    - **Hub 128:** Centrality 0.108, 4894 flows.
+    - **Hub 256:** Centrality 0.107, 623 flows.
+    - **Hub 281:** Centrality 0.090, 1044 flows.
 
-## 7. Cost-Benefit Analysis
-**Techniques:**
-- **Financial modeling:** Calculated total cost implications of delays.
+## 6. Cost-Benefit Analysis
+**How it is calculated:**
+- **Financial Cost Logic:** Total cost is the sum of two variables:
+  1. **Linear Cost:** `Incremental_Delay_Mins` × `£1.00/minute`.
+  2. **Penalty Cost:** If the total cumulative delay for a shipment segment exceeds 60 minutes, an additional heavy monetary penalty (`Penalty_Hours_Over_60min` × `Penalty_Rate` × `Base_Cost`) is applied. The final total across all hubs results in the aggregate network cost.
 
-**Key Findings:**
-- **Total Network Delay Cost:** **£16,348,950.00**.
+**Findings:**
+- **Total Network Delay Cost:** Calculated at **£7,022,346.00**.
+
+## 7. Explainable AI & Agentic Insights
+**How it is calculated:**
+- **XAI (Explainable AI):** Evaluates which neighbor hubs had the mathematically highest "influence" over a specific hub's predicted delay by analyzing the neural network gradients via the GNN explainer layer.
+- **Agentic Insights:** Ingests the pure JSON data of the network graph into Google Gemini to return a human-readable operational summary.
+
+**Findings:**
+- **XAI Results:** Completed structural explainability reports dynamically for our 5 top critical hubs (349, 700, 128, 256, 281).
+- **Insight Agent:** Failed execution due to a missing `GEMINI_API_KEY` environment variable.

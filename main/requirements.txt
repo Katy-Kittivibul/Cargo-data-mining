@@ -33,8 +33,10 @@ mlflow
 matplotlib
 seaborn
 plotly
+streamlit
 ydata-profiling
 
 # --- Geospatial & Utilities ---
 folium
 geopy
+joblib

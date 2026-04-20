@@ -8,7 +8,7 @@ import os
 
 class CostBenefitAnalyzer:
     def __init__(self,
-                 cost_per_delay_minute: float = 5.0,  # £ per minute
+                 cost_per_delay_minute: float = 1.0,  # £ per minute (Adjusted from 5.0)
                  cost_per_shipment: float = 100.0,    # Base cost
                  penalty_rate: float = 0.02):         # 2% penalty per hour late
         self.cost_per_delay_minute = cost_per_delay_minute
@@ -18,43 +18,60 @@ class CostBenefitAnalyzer:
     def calculate_delay_costs(self, long_flow_df: pd.DataFrame,
                               hub_analysis_df: pd.DataFrame) -> Dict:
         """
-        Calculates the financial impact of delays.
+        Calculates the financial impact of delays using Incremental Delay logic
+        to avoid cascading double-counting.
         """
         # 1. Clean and Path Reconstruction
         transport_df = long_flow_df.sort_values(['Leg_ID', 'Planned_Mins']).copy()
-        transport_df['Source_Hub_ID'] = transport_df['Hub_ID'].astype(str)
-        transport_df['Target_Hub_ID'] = transport_df.groupby('Leg_ID')['Hub_ID'].shift(-1).astype(str)
-
+        
+        # Ensure numeric types
+        transport_df['Delay_Mins'] = pd.to_numeric(transport_df['Delay_Mins'], errors='coerce').fillna(0)
+        
         # Determine which stage column to use
         stage_col = 'Stage_Group' if 'Stage_Group' in transport_df.columns else 'Stage'
+        
+        # 2. Incremental Delay Logic (Crucial Fix for Double Counting)
+        # We only charge a hub for the NEW delay it added to the shipment.
+        transport_df['Prev_Delay_Mins'] = transport_df.groupby('Leg_ID')['Delay_Mins'].shift(1).fillna(0)
+        
+        # Incremental Delay = Current Delay - Delay inherited from previous stage
+        # Clip at 0 (a hub shouldn't get "credit" for early arrival in a way that masks other delays)
+        transport_df['Incremental_Delay'] = np.maximum(0, transport_df['Delay_Mins'] - transport_df['Prev_Delay_Mins'])
+        
+        # Clip Outliers (Max 24 hours per segment to prevent data errors from ruining the model)
+        transport_df['Incremental_Delay'] = np.minimum(1440, transport_df['Incremental_Delay'])
 
-        # Ensure numeric types
-        transport_df['Delay_Mins'] = pd.to_numeric(transport_df['Delay_Mins'], errors='coerce')
-
-        # Filter for Transport segments only
-        transport_df = transport_df[
+        # 3. Filter for Transport segments only for attribution
+        transport_df['Source_Hub_ID'] = transport_df['Hub_ID'].astype(str)
+        
+        attr_df = transport_df[
             (transport_df[stage_col].str.contains('Transport', na=False)) &
-            (transport_df['Source_Hub_ID'] != 'nan') &
-            (transport_df['Target_Hub_ID'] != 'nan')
-        ].dropna(subset=['Delay_Mins', 'Source_Hub_ID'])
+            (transport_df['Source_Hub_ID'] != 'none') &
+            (transport_df['Source_Hub_ID'] != 'nan')
+        ].copy()
 
-        # 2. Financial Calculations
-        # Linear cost: £5 per minute of delay
-        transport_df['Delay_Cost'] = transport_df['Delay_Mins'] * self.cost_per_delay_minute
+        # 4. Financial Calculations
+        # Linear cost: Based on incremental delay added at this specific hub
+        attr_df['Delay_Cost'] = attr_df['Incremental_Delay'] * self.cost_per_delay_minute
 
-        # Penalty cost: Applied only if delay > 60 mins
-        transport_df['Penalty_Hours'] = np.maximum(0, (transport_df['Delay_Mins'] - 60) / 60)
-        transport_df['Penalty_Cost'] = (
-            transport_df['Penalty_Hours'] * self.penalty_rate * self.cost_per_shipment
+        # Penalty cost: Applied only if the TOTAL cumulative delay at this segment > 60 mins
+        # and only on the incremental portion to avoid repeating the penalty
+        attr_df['Penalty_Hours'] = np.where(
+            attr_df['Delay_Mins'] > 60, 
+            attr_df['Incremental_Delay'] / 60, 
+            0
+        )
+        attr_df['Penalty_Cost'] = (
+            attr_df['Penalty_Hours'] * self.penalty_rate * self.cost_per_shipment
         )
 
-        transport_df['Total_Cost'] = transport_df['Delay_Cost'] + transport_df['Penalty_Cost']
+        attr_df['Total_Cost'] = attr_df['Delay_Cost'] + attr_df['Penalty_Cost']
 
-        # 3. Aggregate Hub Costs
-        hub_costs = transport_df.groupby('Source_Hub_ID').agg(
+        # 5. Aggregate Hub Costs
+        hub_costs = attr_df.groupby('Source_Hub_ID').agg(
             Total_Cost=('Total_Cost', 'sum'),
             Shipments=('Leg_ID', 'count'),
-            Avg_Delay=('Delay_Mins', 'mean')
+            Avg_Incremental_Delay=('Incremental_Delay', 'mean')
         ).reset_index()
 
         # Ensure ID alignment
@@ -71,10 +88,10 @@ class CostBenefitAnalyzer:
         hub_costs = hub_costs.sort_values('Total_Cost', ascending=False)
 
         return {
-            'total_cost': transport_df['Total_Cost'].sum(),
-            'total_delay_cost': transport_df['Delay_Cost'].sum(),
-            'total_penalty_cost': transport_df['Penalty_Cost'].sum(),
-            'avg_cost_per_shipment': transport_df['Total_Cost'].mean(),
+            'total_cost': attr_df['Total_Cost'].sum(),
+            'total_delay_cost': attr_df['Delay_Cost'].sum(),
+            'total_penalty_cost': attr_df['Penalty_Cost'].sum(),
+            'avg_cost_per_shipment': attr_df['Total_Cost'].mean(),
             'hub_costs': hub_costs
         }
 
@@ -303,7 +320,8 @@ def find_similar_hubs(target_hub_id: str, embeddings: np.ndarray, hub_ids: np.nd
 
 
 def export_results(clustered_df: pd.DataFrame, embeddings: np.ndarray,
-                   critical_routes: pd.DataFrame, output_dir='./model/results'):
+                   critical_routes: pd.DataFrame, long_flow_df: pd.DataFrame = None, 
+                   output_dir='./model/results'):
     """
     Export analysis results.
     """
@@ -311,4 +329,8 @@ def export_results(clustered_df: pd.DataFrame, embeddings: np.ndarray,
     clustered_df.to_csv(f'{output_dir}/hub_clusters.csv', index=False)
     np.save(f'{output_dir}/hub_embeddings.npy', embeddings)
     critical_routes.to_csv(f'{output_dir}/critical_routes.csv', index=False)
+
+    if long_flow_df is not None:
+        long_flow_df.to_csv(f'{output_dir}/long_flow_df.csv', index=False)
+
     print(f"✅ Results exported to {output_dir}")

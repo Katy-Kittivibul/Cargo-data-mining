@@ -65,7 +65,8 @@ def perform_clustering_and_analysis(embeddings: np.ndarray,
     # Merge with hub analysis
     hub_analysis_temp = hub_analysis_df.copy()
     hub_analysis_temp['Hub_ID'] = hub_analysis_temp['Hub_ID'].astype(str)
-    final_df = hub_analysis_temp.merge(cluster_df, on='Hub_ID', how='left')
+    # Using 'inner' join to only keep hubs that were actually in the graph and clustered
+    final_df = hub_analysis_temp.merge(cluster_df, on='Hub_ID', how='inner')
 
     # Data cleanup
     for col in final_df.columns:
@@ -99,7 +100,7 @@ def perform_clustering_and_analysis(embeddings: np.ndarray,
     print("=" * 70)
     print(cluster_summary.to_string(index=False))
 
-    return final_df, cluster_summary
+    return final_df, cluster_summary, kmeans
 
 def interpret_clusters(clustered_df: pd.DataFrame):
     """
@@ -206,7 +207,7 @@ def detect_anomalous_hubs(embeddings: np.ndarray, clustered_df: pd.DataFrame,
 
     return anomalous
 
-def analyse_cluster_boundaries(embeddings: np.ndarray, clustered_df: pd.DataFrame, hub_ids: np.ndarray):
+def analyse_cluster_boundaries(embeddings: np.ndarray, clustered_df: pd.DataFrame, hub_ids: np.ndarray, kmeans_model=None):
     """
     Identifies hubs that are on the boundary between two clusters.
     This serves as a proxy for 'Cluster Transition Analysis'.
@@ -218,9 +219,12 @@ def analyse_cluster_boundaries(embeddings: np.ndarray, clustered_df: pd.DataFram
     from sklearn.metrics import pairwise_distances_argmin_min
     
     # Find distance to all cluster centers
-    kmeans = KMeans(n_clusters=clustered_df['Cluster_Label'].nunique(), random_state=42, n_init=10)
-    # Note: Ideally we pass the already fitted kmeans model, but re-fitting for refactor simplicity
-    kmeans.fit(embeddings)
+    if kmeans_model is None:
+        kmeans = KMeans(n_clusters=clustered_df['Cluster_Label'].nunique(), random_state=42, n_init=10)
+        # Note: Ideally we pass the already fitted kmeans model, but re-fitting for refactor simplicity
+        kmeans.fit(embeddings)
+    else:
+        kmeans = kmeans_model
     
     dists = kmeans.transform(embeddings)
     # Sort distances to true center vs 2nd closest center

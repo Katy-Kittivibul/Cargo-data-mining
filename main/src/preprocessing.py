@@ -17,7 +17,7 @@ COLUMN_RENAME_MAP = {
     'i1_dlv_p': 'IN_1_Delivery_Planned_Mins', 'i1_dlv_e': 'IN_1_Delivery_Effective_Mins', 'i1_hops': 'IN_1_Hops',
     # Incoming Leg 2 (i2)
     'i2_legid': 'IN_2_Leg_ID', 'i2_rcs_p': 'IN_2_CheckIn_Planned_Mins', 'i2_rcs_e': 'IN_2_CheckIn_Effective_Mins',
-    'i2_dep_1_p': 'IN_2_Dep_Seg1_Planned_Mins', 'i2_dep_1_e': 'IN_2_Dep_Seg1_Effective_Mins', 'i2_dep_1_place': 'IN_1_Dep_Seg1_Hub_ID', # Note: mapping i2 to i1 hub? Keeping original logic
+    'i2_dep_1_p': 'IN_2_Dep_Seg1_Planned_Mins', 'i2_dep_1_e': 'IN_2_Dep_Seg1_Effective_Mins', 'i2_dep_1_place': 'IN_2_Dep_Seg1_Hub_ID',
     'i2_rcf_1_p': 'IN_2_Arr_Seg1_Planned_Mins', 'i2_rcf_1_e': 'IN_2_Arr_Seg1_Effective_Mins', 'i2_rcf_1_place': 'IN_2_Arr_Seg1_Hub_ID',
     'i2_dep_2_p': 'IN_2_Dep_Seg2_Planned_Mins', 'i2_dep_2_e': 'IN_2_Dep_Seg2_Effective_Mins', 'i2_dep_2_place': 'IN_2_Dep_Seg2_Hub_ID',
     'i2_rcf_2_p': 'IN_2_Arr_Seg2_Planned_Mins', 'i2_rcf_2_e': 'IN_2_Arr_Seg2_Effective_Mins', 'i2_rcf_2_place': 'IN_2_Arr_Seg2_Hub_ID',
@@ -53,6 +53,22 @@ def load_raw_data(file_path):
     # Using low_memory=False to prevent DtypeWarnings during initial load
     return pd.read_csv(file_path, low_memory=False)
 
+def format_hub_id(val):
+    """Standardizes Hub IDs as integer strings, stripping .0 if present."""
+    if pd.isna(val) or val == 'nan' or val == '?' or val == 0 or val == '0' or val == '0.0':
+        return '0'
+    
+    # Convert to string and strip .0
+    s = str(val).strip()
+    if s.endswith('.0'):
+        s = s[:-2]
+    
+    # Further ensure it looks like an integer
+    try:
+        return str(int(float(s)))
+    except (ValueError, TypeError):
+        return s
+
 def clean_cargo_data(df):
     """
     Renames columns, protects IDs, and converts metrics to numeric.
@@ -68,8 +84,13 @@ def clean_cargo_data(df):
 
     # 2. Identify and Protect ID/Hub columns
     id_cols = [col for col in df_clean.columns if '_ID' in col or 'All_process_ID' in col]
+    hub_cols = [col for col in df_clean.columns if '_Hub_ID' in col]
 
     for col in df_clean.columns:
+        if col in hub_cols:
+            df_clean[col] = df_clean[col].apply(format_hub_id)
+            continue
+            
         if col in id_cols:
             # Ensure IDs are strings; replace '?' with '0'
             df_clean[col] = df_clean[col].astype(str).replace('\?', '0', regex=True).replace('nan', '0')
@@ -88,8 +109,22 @@ def clean_cargo_data(df):
     # Filling with 0 for duration-based metrics to allow statistical analysis
     df_clean = df_clean.fillna(0)
 
+    # 3.5 Remove extreme outliers from metric columns (e.g., > 1 year in minutes)
+    # 560130 is ~389 days. We'll cap at 100,000 (~69 days) which is still very high but more realistic
+    metric_cols = [col for col in df_clean.columns if '_Mins' in col]
+    for col in metric_cols:
+        count_before = (df_clean[col] > 100000).sum()
+        if count_before > 0:
+            df_clean.loc[df_clean[col] > 100000, col] = 0 # Set to 0 (effectively missing/invalid)
+            print(f"🚩 Capped {count_before} extreme outliers (>100k) in '{col}' to 0.")
+
     # Final pass to ensure numeric stability
-    df_clean = df_clean.apply(pd.to_numeric, errors='ignore')
+    for col in df_clean.columns:
+        if df_clean[col].dtype == 'object':
+            try:
+                df_clean[col] = pd.to_numeric(df_clean[col])
+            except ValueError:
+                pass
 
     print(f"\n--- Cleaning Summary ---")
     print(f"Total Columns: {len(df_clean.columns)}")
@@ -159,8 +194,9 @@ def prepare_long_format_data(df: pd.DataFrame) -> pd.DataFrame:
     long_df = pd.concat(milestones, ignore_index=True)
 
     # --- CLEANING ---
-    # 1. Handle Hub_ID: Keep as strings!
-    long_df['Hub_ID'] = long_df['Hub_ID'].astype(str).replace(['0', '0.0', 'nan', '?'], 'none')
+    # 1. Handle Hub_ID: Standardize and then handle placeholders
+    long_df['Hub_ID'] = long_df['Hub_ID'].apply(format_hub_id)
+    long_df['Hub_ID'] = long_df['Hub_ID'].replace(['0', 'nan', '?'], 'none')
 
     # 2. Convert time columns to numeric
     for col in ['Planned_Mins', 'Effective_Mins']:
@@ -229,6 +265,24 @@ def calculate_kpis_and_aggregate(long_flow_df: pd.DataFrame, min_volume=1) -> pd
 
     return hub_metrics_df.reset_index(drop=True)
 
+def remove_outliers_iqr(df, column, multiplier=1.5):
+    """
+    Removes outliers from a dataframe based on the IQR method for a specific column.
+    """
+    Q1 = df[column].quantile(0.25)
+    Q3 = df[column].quantile(0.75)
+    IQR = Q3 - Q1
+    
+    lower_bound = Q1 - multiplier * IQR
+    upper_bound = Q3 + multiplier * IQR
+    
+    initial_count = len(df)
+    df_filtered = df[(df[column] >= lower_bound) & (df[column] <= upper_bound)]
+    final_count = len(df_filtered)
+    
+    print(f"🧹 Outlier Removal ({column}): Removed {initial_count - final_count} rows. (Bounds: {lower_bound:.2f} to {upper_bound:.2f})")
+    return df_filtered
+
 class LogisticsAnalyticEngine:
     """
     A unified suite for Cargo 2000 logistics analysis.
@@ -245,6 +299,12 @@ class LogisticsAnalyticEngine:
         df_clean = clean_cargo_data(self.raw_df)
         # 2. Transform to Long Format
         self.long_df = prepare_long_format_data(df_clean)
+        
+        # --- NEW: Outlier Removal ---
+        # We remove outliers from Delay_Mins to ensure graph stability
+        if 'Delay_Mins' in self.long_df.columns:
+            self.long_df = remove_outliers_iqr(self.long_df, 'Delay_Mins', multiplier=3.0) # Using 3.0 for extreme outliers
+        
         # 3. Aggregate KPIs
         self.kpi_df = calculate_kpis_and_aggregate(self.long_df)
         print("✅ Pipeline Complete. Hub Analysis and Long Data ready.")

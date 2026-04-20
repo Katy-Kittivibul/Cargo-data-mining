@@ -109,7 +109,7 @@ class DelayPredictor:
         print(f"✅ Features engineered: {len(transit_df):,} samples.")
         return transit_df
 
-    def train(self, training_df: pd.DataFrame, test_size=0.2):
+    def train(self, training_df: pd.DataFrame, test_size=0.2, tune_hyperparameters=False):
         print("\n" + "="*70)
         print("TRAINING DELAY PREDICTION MODEL")
         print("="*70)
@@ -121,13 +121,36 @@ class DelayPredictor:
             X, y, test_size=test_size, random_state=42
         )
 
-        if self.model_type == 'gradient_boosting':
-            self.model = GradientBoostingRegressor(n_estimators=150, max_depth=5, random_state=42)
+        if tune_hyperparameters:
+            from sklearn.model_selection import GridSearchCV
+            print("🔍 Tuning Hyperparameters (GridSearchCV)...")
+            
+            param_grid = {
+                'n_estimators': [100, 200, 300],
+                'learning_rate': [0.01, 0.05, 0.1],
+                'max_depth': [3, 4, 5],
+                'min_samples_split': [2, 5]
+            }
+            
+            grid_search = GridSearchCV(
+                GradientBoostingRegressor(random_state=42),
+                param_grid,
+                cv=3,
+                n_jobs=-1,
+                scoring='r2',
+                verbose=1
+            )
+            grid_search.fit(X_train, y_train)
+            self.model = grid_search.best_estimator_
+            print(f"✅ Best Params: {grid_search.best_params_}")
         else:
-            self.model = RandomForestRegressor(n_estimators=150, n_jobs=-1, random_state=42)
-
-        print(f"Fitting {self.model_type}...")
-        self.model.fit(X_train, y_train)
+            if self.model_type == 'gradient_boosting':
+                self.model = GradientBoostingRegressor(n_estimators=200, learning_rate=0.05, max_depth=5, random_state=42)
+            else:
+                self.model = RandomForestRegressor(n_estimators=200, n_jobs=-1, random_state=42)
+            
+            print(f"Fitting {self.model_type}...")
+            self.model.fit(X_train, y_train)
 
         y_pred = self.model.predict(X_test)
         mae = mean_absolute_error(y_test, y_pred)
@@ -161,6 +184,70 @@ class DelayPredictor:
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         fig.write_html(output_path)
         print(f"✅ Feature importance plot saved to {output_path}")
+
+class ConformalPredictor:
+    """
+    Conformal Prediction wrapper to generate mathematically guaranteed confidence intervals.
+    """
+    def __init__(self, predictor: DelayPredictor, calibration_data: pd.DataFrame):
+        self.predictor = predictor
+        self.calibration_data = calibration_data
+        self.calibration_scores = None
+        self._calibrate()
+
+    def _calibrate(self):
+        """
+        Calculate non-conformity scores using the absolute error on the calibration set.
+        """
+        print("\n" + "="*70)
+        print("CALIBRATING CONFORMAL PREDICTOR")
+        print("="*70)
+        
+        if self.predictor.model is None:
+            raise ValueError("The provided predictor's model is not trained.")
+            
+        X_cal = self.calibration_data[self.predictor.feature_cols]
+        y_cal = self.calibration_data['Delay_Mins'].values
+        
+        y_pred = self.predictor.model.predict(X_cal)
+        
+        # Vectorised absolute error non-conformity score |y - y_hat|
+        self.calibration_scores = np.abs(y_cal - y_pred)
+        self.calibration_scores.sort() # sort in-place for efficient quantile retrieval
+        
+        print(f"✅ Calibrated on {len(self.calibration_scores):,} samples.")
+
+    def predict_with_interval(self, X_test: pd.DataFrame, alpha=0.1):
+        """
+        Generate predictions with 1 - alpha confidence intervals (e.g. alpha=0.1 -> 90% CI).
+        All operations are vectorised for performance.
+        """
+        if self.calibration_scores is None:
+            raise ValueError("Predictor must be calibrated first.")
+            
+        X_test_filtered = X_test[self.predictor.feature_cols]
+        y_pred = self.predictor.model.predict(X_test_filtered)
+        
+        n = len(self.calibration_scores)
+        # Calculate the index for the (1 - alpha) empirical quantile
+        k = int(np.ceil((n + 1) * (1 - alpha)))
+        
+        # Ensure k does not exceed array bounds
+        k = min(k, n)
+        
+        # The margin is the k-th smallest non-conformity score
+        margin = self.calibration_scores[k - 1]
+        
+        # Vectorised interval generation
+        lower_bound = y_pred - margin
+        upper_bound = y_pred + margin
+        
+        return {
+            'prediction': y_pred,
+            'lower_bound': lower_bound,
+            'upper_bound': upper_bound,
+            'confidence': 1 - alpha
+        }
 
 
 def mine_delay_patterns(long_flow_df, min_delay_threshold=30):

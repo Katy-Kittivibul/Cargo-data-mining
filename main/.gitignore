@@ -36,3 +36,7 @@ hub_*_investigation.csv
 # OS
 .DS_Store
 Thumbs.db
+
+# Other
+findings_summary.md
+improve.md

@@ -25,8 +25,6 @@ All scripts and local directories are organised within the `main` directory:
     - `optimization.py`: Identifies optimal routes and critical network bottlenecks using NetworkX.
     - `analytics.py`: Delivers cost-benefit analysis and interactive visualisations.
     - `eda_analysis.py`: Provides statistical insights (distribution skewness, multicollinearity checks).
-- **`data/`**: Storage for raw and cleaned datasets (ignored by git).
-- **`results/`**: Output directory for interactive HTML reports, models, and exported data (ignored by git).
 
 ## Key Insights
 - **Network Bottlenecks**: Topology analysis identifies critical choke points (e.g., Hub 349) using centrality scores and historical delay metadata.
@@ -46,6 +44,12 @@ All scripts and local directories are organised within the `main` directory:
    ```
 4. **View Results**:
    Explore the `main/results/` directory for interactive dashboards (`executive_dashboard.html`) and model artifacts.
+
+   **Streamlit:**
+   Interactive dashboard + "What-if" ROI simulation
+   ```bash
+   streamlit run .\dashboard.py
+   ```
 
 ## Architecture
 The system uses a modular design ensuring that each component (Preprocessing, Graph Building, Model Training, Analytics) can be tested and scaled independently.
